@@ -137,6 +137,7 @@ def organize_archives(downloads_path=None):
             except Exception as e:
                 logger.error(f"Ошибка при распаковке {archive}: {e}")
 
+
 if __name__ == "__main__":
     try:
         # Основная организация файлов
