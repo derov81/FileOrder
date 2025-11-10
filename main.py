@@ -145,6 +145,7 @@ def organize_archives(downloads_path=None):
                 logger.error(f"Ошибка при распаковке {archive}: {e}")
 
 
+
 # Запуск скрипта
 if __name__ == "__main__":
     try:
