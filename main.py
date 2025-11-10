@@ -18,7 +18,23 @@ FILE_CATEGORIES = {
     "Torrents": ['.torrent'],
 }
 
+
+def handle_duplicates(destination_path, filename):
+    """Обрабатывает дубликаты файлов, добавляя номер к имени."""
+    base, extension = os.path.splitext(filename)
+    counter = 1
+    new_filename = filename
+
+    # Проверяем, существует ли файл с таким именем в целевой папке
+    while os.path.exists(os.path.join(destination_path, new_filename)):
+        new_filename = f"{base}_{counter}{extension}"
+        counter += 1
+
+    return new_filename
+
+
 def create_folders(destination_path, categories):
+    """Создает папки для каждой категории, если они не существуют."""
     for category in categories:
         category_path = os.path.join(destination_path, category)
         try:
@@ -27,37 +43,30 @@ def create_folders(destination_path, categories):
         except OSError as e:
             logger.error(f"Ошибка при создании папки {category_path}: {e}")
 
+
 def get_file_category(file_extension):
-    #Определяет категорию файла по его расширению
+    """Определяет категорию файла по его расширению."""
     for category, extensions in FILE_CATEGORIES.items():
         if file_extension.lower() in extensions:
             return category
-    return "Other" # Для файлов с неизвестными расширениями
+    return "Other"
 
 
 def organize_downloads_folder(downloads_path=None):
     """
     Основная функция для организации файлов в папке Загрузки.
-
-    Args:
-        downloads_path (str): Путь к папке Загрузки. Если None, используется стандартная папка.
     """
-    # Определяем путь к папке Загрузки
     if downloads_path is None:
-        # Стандартный путь для Windows, для Linux/Mac нужно изменить
         downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
 
-    # Проверяем существование папки Загрузки
     if not os.path.exists(downloads_path):
         logger.error(f"Папка Загрузки не найдена: {downloads_path}")
         return
 
     logger.info(f"Начинаем организацию папки: {downloads_path}")
 
-    # Создаем папки для категорий
     create_folders(downloads_path, list(FILE_CATEGORIES.keys()) + ["Other"])
 
-    # Получаем список файлов и папок в папке Загрузки
     try:
         items = os.listdir(downloads_path)
     except OSError as e:
@@ -70,26 +79,24 @@ def organize_downloads_folder(downloads_path=None):
     for item in items:
         item_path = os.path.join(downloads_path, item)
 
-        # Пропускаем папки категорий и системные файлы
         if (os.path.isdir(item_path) and item in FILE_CATEGORIES.keys()) or item.startswith('.'):
             continue
 
-        # Обрабатываем только файлы
         if os.path.isfile(item_path):
-            # Получаем расширение файла
             _, file_extension = os.path.splitext(item)
-
-            # Определяем категорию
             category = get_file_category(file_extension)
-
-            # Целевой путь для перемещения
             destination_folder = os.path.join(downloads_path, category)
-            destination_path = os.path.join(destination_folder, item)
+
+            # Используем функцию обработки дубликатов
+            new_filename = handle_duplicates(destination_folder, item)
+            destination_path = os.path.join(destination_folder, new_filename)
 
             try:
-                # Перемещаем файл
                 shutil.move(item_path, destination_path)
-                logger.info(f"Перемещен: {item} -> {category}/")
+                if new_filename != item:
+                    logger.info(f"Перемещен (переименован): {item} -> {category}/{new_filename}")
+                else:
+                    logger.info(f"Перемещен: {item} -> {category}/")
                 moved_count += 1
 
             except Exception as e:
@@ -138,16 +145,13 @@ def organize_archives(downloads_path=None):
                 logger.error(f"Ошибка при распаковке {archive}: {e}")
 
 
+# Запуск скрипта
 if __name__ == "__main__":
     try:
-        # Основная организация файлов
         organize_downloads_folder()
-
+        print("Скрипт успешно выполнен! Проверьте папку Загрузки.")
         # Дополнительно: распаковка архивов
         organize_archives()
-
-        print("Скрипт успешно выполнен! Проверьте папку Загрузки.")
-
     except Exception as e:
         logger.error(f"Критическая ошибка: {e}")
         print("Произошла ошибка при выполнении скрипта. Подробности в логе.")
